@@ -1,0 +1,13 @@
+<!-- web/templates/esquema.html -->
+{% extends "base.html" %}
+{% block content %}
+  <div class="card">
+    <div class="card-body">
+      <h5 class="card-title">Esquema Entidad–Relación (ERD)</h5>
+      <p class="text-muted">Diagrama generado con Mermaid.</p>
+      <div class="mermaid">
+{{ mermaid }}
+      </div>
+    </div>
+  </div>
+{% endblock %}

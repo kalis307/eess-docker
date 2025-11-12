@@ -1,0 +1,237 @@
+<!-- web/templates/resultados.html -->
+{% extends "base.html" %}
+{% block content %}
+<div class="card mb-3">
+  <div class="card-body">
+    <h5 class="card-title">{{ title }}</h5>
+    <p class="text-muted">Resultados: {{ total }} — Página {{ page }} de {{ total_pages }}</p>
+
+    <div class="mb-3">
+      {# --- Caso especial: listas de empresas con 'total' (Top empresas) --- #}
+      {% set first = (rows[0] if rows else None) %}
+      {% set has_total_variants = first is not none and (first.get('total') is defined or first.get('total_estaciones') is defined or first.get('count') is defined) %}
+      {% if first is not none and first.get('empresa') is defined and has_total_variants and first.get('provincia') is none %}
+        <div class="table-responsive">
+          <table class="table table-sm table-striped">
+            <thead>
+              <tr>
+                <th>Empresa</th>
+                <th style="width:160px; text-align:right">Total estaciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in rows %}
+                {% set total_val = (r.total if r.total is not none else (r.total_estaciones if r.total_estaciones is not none else (r.count if r.count is not none else ''))) %}
+                <tr>
+                  <td title="{{ r.empresa }}">{{ r.empresa or '' }}</td>
+                  <td class="td-num" title="{{ total_val }}">{{ total_val }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+      {# --- Caso general: filas con datos de estaciones (provincia, direccion, precio, coords, ...) --- #}
+      {% else %}
+        <div class="table-responsive">
+          <table class="table table-sm table-striped">
+            <thead>
+              <tr>
+                <th>Provincia</th>
+                <th>Municipio</th>
+                <th>Localidad</th>
+                <th style="min-width:360px">Dirección</th>
+                <th>Empresa</th>
+                <th>Combustible</th>
+                <th style="width:60px">Margen</th>
+                <th style="width:100px">Precio (€)</th>
+                <th style="width:120px">Latitud</th>
+                <th style="width:120px">Longitud</th>
+                <th style="width:90px">Fuente</th>
+                {% if first is not none and first.get('distancia_km') is defined %}
+                  <th style="width:110px">Dist. (km)</th>
+                {% endif %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in rows %}
+                <tr>
+                  <td title="{{ r.provincia }}">{{ r.provincia or '' }}</td>
+                  <td title="{{ r.municipio }}">{{ r.municipio or '' }}</td>
+                  <td title="{{ r.localidad }}">{{ r.localidad or '' }}</td>
+                  <td class="td-wrap" title="{{ r.direccion }}">{{ r.direccion or '' }}</td>
+                  <td title="{{ r.empresa }}">{{ r.empresa or '' }}</td>
+                  <td title="{{ r.combustible }}">{{ r.combustible or '' }}</td>
+                  <td title="{{ r.margen }}">{{ r.margen or '' }}</td>
+                  <td class="td-num" data-raw="{{ r.precio }}">{{ r.precio or '' }}</td>
+                  <td class="td-num" data-raw="{{ r.latitud }}">{{ r.latitud or '' }}</td>
+                  <td class="td-num" data-raw="{{ r.longitud }}">{{ r.longitud or '' }}</td>
+                  <td title="{{ r.fuente }}">{{ r.fuente or '' }}</td>
+                  {% if first is not none and first.get('distancia_km') is defined %}
+                    <td class="td-num" data-raw="{{ r.distancia_km }}">{{ r.distancia_km or '' }}</td>
+                  {% endif %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+
+      <!-- paginación (común a ambos casos) -->
+      <nav aria-label="paginacion" class="mt-2">
+        <ul class="pagination">
+          {% set prev_page = page - 1 %}
+          {% set next_page = page + 1 %}
+          <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+            <a class="page-link" href="?{% for k,v in base_args.items() %}{{k}}={{v}}&{% endfor %}page={{ prev_page }}">Anterior</a>
+          </li>
+
+          {% for p in range(1, total_pages + 1) %}
+            <li class="page-item {% if p == page %}active{% endif %}">
+              <a class="page-link" href="?{% for k,v in base_args.items() %}{{k}}={{v}}&{% endfor %}page={{ p }}">{{ p }}</a>
+            </li>
+          {% endfor %}
+
+          <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+            <a class="page-link" href="?{% for k,v in base_args.items() %}{{k}}={{v}}&{% endfor %}page={{ next_page }}">Siguiente</a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+
+    {# --- Mapa: se muestra sólo si no estamos en la vista compacta de empresas --- #}
+    {% if not (first is not none and first.get('empresa') is defined and has_total_variants and first.get('provincia') is none) %}
+      <div>
+        <div id="map" class="mb-2" style="height:420px; width:100%;"></div>
+        <div id="map-legend" class="small text-muted">Marcadores: estaciones mostradas en la tabla (si tienen coordenadas).</div>
+      </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ---------- utilidades de formateo ---------- */
+function fmtNumRaw(raw, decimals=3) {
+  if (raw === null || raw === undefined || raw === '') return '';
+  const s = String(raw).replace(',', '.').trim();
+  const v = parseFloat(s);
+  if (isNaN(v)) return raw;
+  return v.toFixed(decimals);
+}
+
+/* formatea celdas con data-raw (precios y coords) */
+function formatTableNumbers() {
+  document.querySelectorAll('td[data-raw]').forEach(function(td) {
+    const raw = td.getAttribute('data-raw');
+    if (raw === null || raw === '') {
+      td.textContent = '';
+      return;
+    }
+    const v = parseFloat(String(raw).replace(',', '.'));
+    if (isNaN(v)) {
+      td.textContent = raw;
+      return;
+    }
+    // heurística: si abs(v) > 100 => precio (3 decimales). si entre -180 y 180 => coord (6 decimales)
+    if (Math.abs(v) > 100) {
+      td.textContent = fmtNumRaw(raw, 3);
+    } else {
+      td.textContent = fmtNumRaw(raw, 6);
+    }
+  });
+}
+
+/* activar tooltips de bootstrap si está disponible */
+function enableTooltips() {
+  try {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'));
+    tooltipTriggerList.forEach(function (el) {
+      if (el.getAttribute('title') && el.getAttribute('title').length > 20) {
+        new bootstrap.Tooltip(el, {placement: 'top', delay: { "show": 250, "hide": 50 }});
+      }
+    });
+  } catch (e) {
+    // bootstrap no disponible, no pasa nada
+  }
+}
+
+/* ---------- Map + marcadores (sólo si rows contiene estaciones con coords) ---------- */
+const rows = {{ rows|tojson }};
+function safeFloat(v) {
+  if (v === null || v === undefined || v === '') return null;
+  const f = parseFloat(String(v).replace(',', '.'));
+  return isNaN(f) ? null : f;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  // formatear tabla y activar tooltips
+  formatTableNumbers();
+  enableTooltips();
+
+  // determinar si es la vista compacta "empresa+total"
+  const isEmpresaTotalOnly = (function(){
+    try {
+      if (!Array.isArray(rows) || rows.length === 0) return false;
+      const first = rows[0];
+      const hasTotal = (first.hasOwnProperty('total') || first.hasOwnProperty('total_estaciones') || first.hasOwnProperty('count'));
+      return (first.hasOwnProperty('empresa') && hasTotal && !first.hasOwnProperty('provincia'));
+    } catch (e) {
+      return false;
+    }
+  })();
+
+  if (!isEmpresaTotalOnly) {
+    // inicializar mapa
+    const map = L.map('map').setView([40.0, -3.7], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    let bounds = [];
+    const markers = [];
+
+    rows.forEach(function(r, idx) {
+      const lat = safeFloat(r.latitud || r.lat || r.latitude);
+      const lon = safeFloat(r.longitud || r.lon || r.longitude);
+      if (lat !== null && lon !== null) {
+        const marker = L.marker([lat, lon]).addTo(map);
+        markers.push(marker);
+        bounds.push([lat, lon]);
+
+        // popup con información
+        let popup = "<strong>" + (r.empresa || '') + "</strong><br/>";
+        popup += (r.direccion ? r.direccion + "<br/>" : "");
+        popup += (r.combustible ? r.combustible + " — " : "");
+        popup += (r.precio ? (String(r.precio).replace(',', '.') + " €<br/>") : "<br/>");
+        popup += (r.fuente ? "<em>Fuente: " + r.fuente + "</em>" : "");
+        if (r.distancia_km !== undefined && r.distancia_km !== null) {
+          popup += "<br/><strong>Dist: </strong>" + r.distancia_km + " km";
+        }
+        marker.bindPopup(popup);
+
+        // relacionar fila con marker: añadir atributo data-rowidx para poder abrir popup desde la tabla
+        const tr = document.querySelectorAll('table tbody tr')[idx];
+        if (tr) {
+          tr.dataset.markerIndex = markers.length - 1;
+          tr.style.cursor = 'pointer';
+          tr.addEventListener('click', function() {
+            marker.openPopup();
+            map.panTo([lat, lon]);
+          });
+        }
+      }
+    });
+
+    if (bounds.length > 0) {
+      map.fitBounds(bounds, {padding: [40,40]});
+    } else {
+      map.setView([40.0, -3.7], 6);
+    }
+  }
+});
+</script>
+{% endblock %}

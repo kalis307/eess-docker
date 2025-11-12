@@ -1,0 +1,89 @@
+﻿<!-- web/templates/index.html -->
+{% extends "base.html" %}
+{% block content %}
+<div class="card mb-3">
+  <div class="card-body">
+    <h5 class="card-title">Panel de consultas y filtros</h5>
+    <p class="card-text">Filtra por provincia, empresa, combustible o fuente (terrestre/marítima). Pulsa "Buscar" para ver resultados y mapa.</p>
+
+    <!-- acción a ruta literal /buscar; JS asegura envío y page=1 -->
+    <form id="form-filtros" action="/buscar" method="get" class="row g-2">
+      <input type="hidden" name="page" id="hidden-page" value="1" />
+      <div class="col-md-3">
+        <label class="form-label">Provincia</label>
+        <select name="provincia" class="form-select" id="provincia">
+          <option value="">(Todas)</option>
+          {% for p in provincias %}
+            <option value="{{ p }}">{{ p }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-md-3">
+        <label class="form-label">Empresa</label>
+        <select name="empresa" class="form-select" id="empresa">
+          <option value="">(Todas)</option>
+          {% for e in empresas %}
+            <option value="{{ e }}">{{ e }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-md-3">
+        <label class="form-label">Combustible</label>
+        <select name="combustible" class="form-select" id="combustible">
+          <option value="">(Todos)</option>
+          {% for c in combustibles %}
+            <option value="{{ c }}">{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label">Fuente</label>
+        <select name="fuente" class="form-select" id="fuente">
+          <option value="">(Ambas)</option>
+          <option value="terrestre">Terrestre</option>
+          <option value="maritima">Marítima</option>
+        </select>
+      </div>
+
+      <div class="col-md-1 d-flex align-items-end">
+        <button id="btn-buscar" type="submit" class="btn btn-primary w-100">Buscar</button>
+      </div>
+    </form>
+
+    <hr/>
+
+    <div class="row">
+      <div class="col-md-6">
+        <a class="btn btn-outline-secondary mb-2 w-100" href="/gas95_madrid">Gasolina 95 E5 en Madrid</a>
+      </div>
+      <div class="col-md-6">
+        <a class="btn btn-outline-secondary mb-2 w-100" href="/gasoleo_cercano?lat=38.9943&lon=-1.8572&km=10">Gasóleo A cerca (Albacete 10 km)</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Asegura que el formulario se envía (compatibilidad) y que page=1 al buscar
+  document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('form-filtros');
+    const btn = document.getElementById('btn-buscar');
+    const pageInput = document.getElementById('hidden-page');
+
+    btn.addEventListener('click', function(e) {
+      // forzamos page=1 por si venimos de otra página
+      if (pageInput) pageInput.value = '1';
+      // dejar que el submit siga su curso
+    });
+
+    // opcional: submit por Enter desde selects/inputs
+    form.addEventListener('submit', function(e) {
+      // no hacemos validaciones complicadas aquí
+      return true;
+    });
+  });
+</script>
+{% endblock %}

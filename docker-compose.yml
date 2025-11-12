@@ -1,0 +1,52 @@
+# docker-compose.yml (formato moderno: no hace falta la clave `version`)
+services:
+  db:
+    image: mysql:8.0
+    container_name: eess_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: example_root_pw
+      MYSQL_DATABASE: estaciones_servicio
+      MYSQL_USER: eess_user
+      MYSQL_PASSWORD: eess_pass
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./mysql-init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "3306:3306"
+
+  importer:
+    build: ./importer
+    container_name: eess_importer
+    depends_on:
+      - db
+    environment:
+      MYSQL_HOST: db
+      MYSQL_PORT: 3306
+      MYSQL_DB: estaciones_servicio
+      MYSQL_USER: eess_user
+      MYSQL_PASSWORD: eess_pass
+    volumes:
+      - ./csv:/app/csv:ro
+    restart: "no"
+
+  web:
+    build: ./web
+    container_name: eess_web
+    depends_on:
+      - db
+    environment:
+      MYSQL_HOST: db
+      MYSQL_PORT: 3306
+      MYSQL_DB: estaciones_servicio
+      MYSQL_USER: eess_user
+      MYSQL_PASSWORD: eess_pass
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+    volumes:
+      - ./web/templates:/app/templates:ro
+      - ./web/static:/app/static:ro
+
+volumes:
+  db_data:
