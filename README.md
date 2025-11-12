@@ -63,7 +63,11 @@ embarcacionesPrecios_es.csv → estaciones marítimas
    docker compose build --no-cache
 
 2. Iniciar los servicios  
-   docker compose up -d
+   docker compose up -d db
+   docker compose run --rm importer ( aquí tardará mientras vuelca los datos a la BD)
+   docker compose up -d --build web
+
+
 
 Esto levantará:
 

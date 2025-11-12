@@ -257,23 +257,72 @@ def haversine_km(lat1, lon1, lat2, lon2):
 
 @app.route('/gasoleo_cercano', methods=['GET'])
 def gasoleo_cercano():
-    # lat/lon y km desde la querystring
-    try:
-        lat0 = float(request.args.get('lat'))
-        lon0 = float(request.args.get('lon'))
-    except (TypeError, ValueError):
-        return "Parámetros lat/lon inválidos", 400
-    try:
-        max_km = float(request.args.get('km', 10))
-    except (TypeError, ValueError):
-        max_km = 10.0
+    """
+    Buscar estaciones con 'Gasóleo A' dentro de max_km de (lat, lon).
+    - Acepta lat/lon con coma o punto como separador decimal.
+    - Acepta varios nombres de parámetros: lat/lon, latitude/longitude, lat0/lon0, lng.
+    - Si no se proporcionan coordenadas, usa por defecto Albacete (38.9943, -1.8572) para no romper la UI.
+    """
+    # helper: parsear float tolerante
+    def parse_coord_val(s):
+        if s is None:
+            return None
+        s2 = str(s).strip()
+        if s2 == '':
+            return None
+        s2 = s2.replace(',', '.')
+        try:
+            return float(s2)
+        except ValueError:
+            return None
 
-    page = max(1, int(request.args.get('page', 1)))
+    # admitir varios nombres de parámetro
+    raw_lat_candidates = [
+        request.args.get('lat'),
+        request.args.get('latitude'),
+        request.args.get('lat0'),
+    ]
+    raw_lon_candidates = [
+        request.args.get('lon'),
+        request.args.get('longitude'),
+        request.args.get('lon0'),
+        request.args.get('lng'),
+    ]
 
+    lat0 = None
+    lon0 = None
+    for v in raw_lat_candidates:
+        if lat0 is None:
+            lat0 = parse_coord_val(v)
+    for v in raw_lon_candidates:
+        if lon0 is None:
+            lon0 = parse_coord_val(v)
+
+    # logging para depuración
+    app.logger.debug("gasoleo_cercano: parámetros recibidos: %s", dict(request.args))
+
+    # si no vienen, usar valores por defecto (Albacete) para evitar error 400 en UI
+    if lat0 is None or lon0 is None:
+        app.logger.debug("gasoleo_cercano: lat/lon no válidos o ausentes, usando valor por defecto (Albacete)")
+        lat0, lon0 = 38.9943, -1.8572
+
+    # km tolerante
+    km_raw = request.args.get('km', '10')
+    try:
+        km_val = float(str(km_raw).replace(',', '.').strip())
+    except Exception:
+        km_val = 10.0
+
+    # página
+    try:
+        page = max(1, int(request.args.get('page', 1)))
+    except Exception:
+        page = 1
+
+    # consulta: obtener todas las filas relevantes (filtrado por combustible en SQL)
     conn = get_conn()
     cur = conn.cursor(dictionary=True)
     try:
-        # obtenemos estaciones que contienen precio de gasóleo A (o nombre exacto en combustible)
         q = """
         SELECT s.id as id_estacion, s.provincia, s.municipio, s.localidad, s.direccion,
                e.nombre as empresa, s.margen, p.precio, s.latitud, s.longitud, s.fuente
@@ -281,22 +330,31 @@ def gasoleo_cercano():
         JOIN combustible c ON p.id_combustible = c.id
         JOIN estacion s ON p.id_estacion = s.id
         LEFT JOIN empresa e ON s.id_empresa = e.id
-        WHERE c.nombre LIKE '%%Gasóleo A%%' OR c.nombre LIKE '%%Gasoil A%%' OR c.nombre LIKE '%%Diesel A%%'
+        WHERE (c.nombre LIKE '%%Gasóleo A%%' OR c.nombre LIKE '%%Gasoil A%%' OR c.nombre LIKE '%%Diesel A%%')
         """
         cur.execute(q)
         fetched = cur.fetchall()
+
         rows_all = []
         for r in fetched:
+            # parsear coordenadas almacenadas (pueden venir como strings con comas)
+            lat_v = None
+            lon_v = None
             try:
-                lat = float(r['latitud']) if r.get('latitud') not in (None, '') else None
-                lon = float(r['longitud']) if r.get('longitud') not in (None, '') else None
+                lat_v = None if r.get('latitud') in (None, '') else float(str(r.get('latitud')).replace(',', '.'))
             except Exception:
-                lat = None; lon = None
+                lat_v = None
+            try:
+                lon_v = None if r.get('longitud') in (None, '') else float(str(r.get('longitud')).replace(',', '.'))
+            except Exception:
+                lon_v = None
+
             distancia = None
-            if lat is not None and lon is not None:
-                distancia = haversine_km(lat0, lon0, lat, lon)
-            # filtrar por max_km solo si hay coordenadas
-            if distancia is None or distancia <= max_km:
+            if lat_v is not None and lon_v is not None:
+                distancia = haversine_km(lat0, lon0, lat_v, lon_v)
+
+            # si la distancia es None (sin coords) lo mantenemos, o si está dentro de km_val
+            if distancia is None or distancia <= km_val:
                 rows_all.append({
                     'provincia': r.get('provincia'),
                     'municipio': r.get('municipio'),
@@ -324,13 +382,14 @@ def gasoleo_cercano():
 
     base_args = {k: v for k, v in request.args.items() if k != 'page'}
     return render_template('resultados.html',
-                           title=f"Gasóleo A dentro de {max_km} km",
+                           title=f"Gasóleo A dentro de {km_val} km",
                            rows=page_rows,
                            columns=['provincia','municipio','localidad','direccion','empresa','combustible','margen','precio','latitud','longitud','fuente','distancia_km'],
                            page=page,
                            total_pages=total_pages,
                            base_args=base_args,
                            total=total)
+
 # Consulta E: estación marítima con Gasolina 95 E5 más cara
 @app.route('/gas95_maritima_top', methods=['GET'])
 def gas95_maritima_top():
