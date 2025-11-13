@@ -1,92 +1,192 @@
+<!-- Updated: web/templates/base.html -->
 <!doctype html>
 <html lang="es">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>{{ title or "EESS - Consultas" }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<style>
-/* tabla: mejor lectura */
-.table-responsive {
-  overflow: auto;
-  max-height: 520px; /* controla alto total de la tabla */
-  border: none;
-}
 
-.table {
-  min-width: 1000px; /* evita que las columnas se compriman demasiado */
-  border-collapse: separate;
-}
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{{ title or "EESS - Consultas" }}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    /* tabla: mejor lectura */
+    .table-responsive {
+      overflow: auto;
+      max-height: 520px;
+      /* controla alto total de la tabla */
+      border: none;
+    }
 
-/* cabeceras en negrita y pequeñas mejoras */
-.table thead th {
-  font-weight: 700;
-  border-bottom: 2px solid #dee2e6;
-  vertical-align: middle;
-  white-space: nowrap;
-}
 
-/* celdas con wrap controlado */
-.table tbody td {
-  vertical-align: middle;
-  white-space: nowrap;       /* evitar salto de línea por defecto */
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 220px;          /* ancho máximo razonable por celda */
-}
+    .table {
+      min-width: 1000px;
+      /* evita que las columnas se compriman demasiado */
+      border-collapse: separate;
+    }
 
-/* direcciones y campos largos: permitir wrap y tooltip */
-.td-wrap {
-  white-space: normal;       /* permitir varias líneas si hace falta */
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 360px;
-}
 
-/* alinear números a la derecha */
-.td-num {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
+    /* cabeceras en negrita y pequeñas mejoras */
+    .table thead th {
+      font-weight: 700;
+      border-bottom: 2px solid #dee2e6;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
 
-/* ajustar columnas pequeñas */
-.col-small { width: 60px; white-space: nowrap; }
 
-/* estilos para paginación espaciada */
-.pagination { margin-top: 0.75rem; }
+    /* celdas con wrap controlado */
+    .table tbody td {
+      vertical-align: middle;
+      white-space: nowrap;
+      /* evitar salto de línea por defecto */
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 220px;
+      /* ancho máximo razonable por celda */
+    }
 
-/* responsive: en pantallas pequeñas tablas ocupan todo y mapa debajo */
-@media (max-width: 991px) {
-  .table-responsive { max-height: 300px; }
-  .table { min-width: 700px; }
-  .td-wrap { max-width: 220px; }
-}
-</style>
 
-  </head>
-  <body class="bg-light">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-3">
-      <div class="container-fluid">
-        <a class="navbar-brand" href="/">EESS - Consultas</a>
-        <div class="collapse navbar-collapse">
-          <ul class="navbar-nav me-auto">
-            <li class="nav-item"><a class="nav-link" href="/">Inicio</a></li>
-            <li class="nav-item"><a class="nav-link" href="/empresa_mayor?fuente=terrestre">Top empresas (terrestre)</a></li>
-            <li class="nav-item"><a class="nav-link" href="/empresa_mayor?fuente=maritima">Top empresas (marítima)</a></li>
-            <li class="nav-item"><a class="nav-link" href="/gas95_madrid">Gas95 Madrid</a></li>
-            <li class="nav-item"><a class="nav-link" href="/gasoleo_cercano">Gasóleo cercano</a></li>
-            <li class="nav-item"><a class="nav-link" href="/gas95_maritima_top">Gas95 marítima</a></li>
-          </ul>
+    /* direcciones y campos largos: permitir wrap y tooltip */
+    .td-wrap {
+      white-space: normal;
+      /* permitir varias líneas si hace falta */
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 360px;
+    }
+
+
+    /* alinear números a la derecha */
+    .td-num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+
+    /* ajustar columnas pequeñas */
+    .col-small {
+      width: 60px;
+      white-space: nowrap;
+    }
+
+
+    /* estilos para paginación espaciada */
+    .pagination {
+      margin-top: 0.75rem;
+    }
+
+
+    /* responsive: en pantallas pequeñas tablas ocupan todo y mapa debajo */
+    @media (max-width: 991px) {
+      .table-responsive {
+        max-height: 300px;
+      }
+
+      .table {
+        min-width: 700px;
+      }
+
+      .td-wrap {
+        max-width: 220px;
+      }
+    }
+
+
+    /* tarjetas */
+    .card-grid {
+      gap: 1rem;
+    }
+
+    .card .card-body {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card .mt-auto {
+      margin-top: auto;
+    }
+
+
+    /* evitar overflow horizontal de la paginación (permite wrap) */
+    .pagination {
+      flex-wrap: wrap;
+    }
+
+
+    /* paginación compacta (móvil): ocultar la lista larga y mostrar control compacto */
+    .pagination-compact {
+      display: none;
+    }
+
+    @media (max-width: 575.98px) {
+      .pagination-full {
+        display: none !important;
+      }
+
+      .pagination-compact {
+        display: flex !important;
+        gap: .5rem;
+        align-items: center;
+      }
+    }
+  </style>
+
+
+</head>
+
+<body class="bg-light">
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-3" aria-label="Barra de navegación principal">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="/">EESS - Consultas</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar"
+        aria-controls="mainNavbar" aria-expanded="false" aria-label="Mostrar navegación">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+
+      <div class="collapse navbar-collapse" id="mainNavbar">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item"><a class="nav-link" href="/">Inicio</a></li>
+          <li class="nav-item"><a class="nav-link" href="/empresa_mayor?fuente=terrestre">Top empresas (terrestre)</a>
+          </li>
+          <li class="nav-item"><a class="nav-link" href="/empresa_mayor?fuente=maritima">Top empresas (marítima)</a>
+          </li>
+          <li class="nav-item"><a class="nav-link" href="/gas95_madrid">Gas95 Madrid</a></li>
+          <li class="nav-item"><a class="nav-link" href="/gasoleo_cercano">Gasóleo cercano</a></li>
+          <li class="nav-item"><a class="nav-link" href="/gas95_maritima_top">Gas95 marítima</a></li>
+        </ul>
+
+
+        <!-- Quick links: se muestran como botones en desktop, y como lista dentro del collapse en móvil -->
+        <!-- <div class="d-none d-md-block me-2">
+          <div class="btn-toolbar" role="toolbar" aria-label="Enlaces rápidos">
+            <div class="btn-group" role="group" aria-label="desktop quick links">
+              <a class="btn btn-outline-light btn-sm" href="{{ url_for('empresa_mayor', fuente='terrestre') }}">Top
+                empresas (terrestre)</a>
+              <a class="btn btn-outline-light btn-sm" href="{{ url_for('empresa_mayor', fuente='maritima') }}">Top
+                empresas (marítima)</a>
+              <a class="btn btn-outline-light btn-sm" href="{{ url_for('gas95_madrid') }}">Gas95 Madrid</a>
+              <a class="btn btn-outline-light btn-sm"
+                href="{{ url_for('gasoleo_cercano', lat='38.9943', lon='-1.8572', km=10) }}">Gasóleo Albacete 10km</a>
+              <a class="btn btn-outline-light btn-sm" href="{{ url_for('gas95_maritima_top') }}">Gas95 marítima</a>
+            </div>
+          </div>
         </div>
-      </div>
-    </nav>
-    <main class="container">
-      {% block content %}{% endblock %}
-    </main>
+ -->
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    {% block scripts %}{% endblock %}
-  </body>
+      </div>
+    </div>
+  </nav>
+
+
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  {% block scripts %}{% endblock %}
+</body>
+
 </html>

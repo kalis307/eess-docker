@@ -50,24 +50,29 @@ embarcacionesPrecios_es.csv → estaciones marítimas
 
 ### Estructura del proyecto
 
-![alt text](image-1.png)
+![alt text](image.png)
 
 
-### Ejecución paso a paso
+## 🧭 Ejecución paso a paso
 
-## 1. Construir las imágenes
-
-    # 🧭 Ejecución paso a paso
 
 1. Construir las imágenes  
-   docker compose build --no-cache
 
-2. Iniciar los servicios  
-   docker compose up -d db
-   docker compose run --rm importer ( aquí tardará mientras vuelca los datos a la BD)
-   docker compose up -d --build web
+        docker compose build --no-cache
 
+2. Iniciar la base de datos:
 
+        docker compose up -d db
+
+3. Iniciar el servidor web y el frontend
+
+        docker compose up -d --build web
+        
+4. Realizar la carga por medio de python de los datos almacenado en los archivos .csv sobre la base de datos mysql.
+
+        docker compose run --rm importer 
+        
+        ( aquí tardará mientras vuelca los datos a la BD).
 
 Esto levantará:
 
@@ -76,10 +81,11 @@ Esto levantará:
 - eess_web (interfaz Flask)
 
 Puedes seguir los logs con:  
-docker logs -f eess_importer  
-docker logs -f eess_web
 
-3. Acceso a la aplicación web  
+        docker logs -f eess_importer  
+        docker logs -f eess_web
+
+5. Acceso a la aplicación web  
 
 Una vez que los contenedores estén corriendo, abre en el navegador:  
 http://localhost:5000/
@@ -92,11 +98,26 @@ La interfaz permite:
 - Visualizar las estaciones en un mapa interactivo (Leaflet) con sus coordenadas.  
 - Ver el diagrama Entidad–Relación (ERD) de la base de datos.
 
-4. Parar el entorno  
-docker compose down
+6. Ajustes en el código: si se editan los ficheros del frontend se deben guardar y ejecutar el siguiente comando para que el servidor los actualice:
+
+        docker compose restart web     
+
+7. Si se editan los códigos del backend deben guardar y ejecutar los siguientes comando para que el servidor los actualice:
+
+        docker-compose build --no-cache
+        docker compose build --no-cache web
+
+
+8. Parar el entorno:
+
+        docker compose down
 
 Si deseas eliminar los datos de MySQL:  
-docker compose down -v
+
+        docker compose down -v
+
+
+
 
 # 🗃️ Esquema relacional
 
