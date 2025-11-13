@@ -50,7 +50,7 @@ embarcacionesPrecios_es.csv → estaciones marítimas
 
 ### Estructura del proyecto
 
-![alt text](image.png)
+![alt text](ProjectTree.png)
 
 
 ## 🧭 Ejecución paso a paso
@@ -70,9 +70,8 @@ embarcacionesPrecios_es.csv → estaciones marítimas
         
 4. Realizar la carga por medio de python de los datos almacenado en los archivos .csv sobre la base de datos mysql.
 
-        docker compose run --rm importer 
-        
-        ( aquí tardará mientras vuelca los datos a la BD).
+        docker compose run --rm importer  # aquí tardará mientras vuelca los datos a la BD
+
 
 Esto levantará:
 
